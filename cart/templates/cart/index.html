@@ -4,6 +4,29 @@
 {% load cart_filters %}
 <div class="p-3">
   <div class="container">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+    
+    {% if request.session.error %}
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        {{ request.session.error }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      {% endif %}
+      
+      {% if request.session.success %}
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ request.session.success }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      {% endif %}
+    
     <div class="row mt-3">
       <div class="col mx-auto mb-3">
         <h2>Shopping Cart</h2>
@@ -18,17 +41,26 @@
             <th scope="col">ID</th>
             <th scope="col">Name</th>
             <th scope="col">Price</th>
+            <th scope="col">In Stock</th>
             <th scope="col">Quantity</th>
           </tr>
         </thead>
         <tbody>
           {% for movie in template_data.movies_in_cart %}
-          <tr>
+          <tr class="{% if movie.amount_left == 0 %}table-danger{% elif movie.amount_left < 5 %}table-warning{% endif %}">
             <td>{{ movie.id }}</td>
             <td>{{ movie.name }}</td>
             <td>${{ movie.price }}</td>
-            <td>{{ request.session.cart|get_quantity:movie.id }}
+            <td>
+              {% if movie.amount_left > 5 %}
+                <span class="text-success">{{ movie.amount_left }} available</span>
+              {% elif movie.amount_left > 0 %}
+                <span class="text-warning">Only {{ movie.amount_left }} left!</span>
+              {% else %}
+                <span class="text-danger">Out of stock</span>
+              {% endif %}
             </td>
+            <td>{{ request.session.cart|get_quantity:movie.id }}</td>
           </tr>
           {% endfor %}
         </tbody>

@@ -9,23 +9,38 @@
         <hr />
         <p><b>Description:</b> {{ template_data.movie.description }}</p>
         <p><b>Price:</b> ${{ template_data.movie.price }}</p>
+        <div class="mb-3">
+          <b>Availability:</b>
+          {% if template_data.movie.amount_left > 5 %}
+            <span class="text-success">In Stock ({{ template_data.movie.amount_left }} available)</span>
+          {% elif template_data.movie.amount_left > 0 %}
+            <span class="text-warning">Only {{ template_data.movie.amount_left }} left in stock!</span>
+          {% else %}
+            <span class="text-danger">Out of Stock</span>
+          {% endif %}
+        </div>
         <p class="card-text">
-          <form method="post"
-            action="{% url 'cart.add' id=template_data.movie.id %}">
+          <form method="post" action="{% url 'cart.add' id=template_data.movie.id %}">
+            {% csrf_token %}
             <div class="row">
-              {% csrf_token %}
               <div class="col-auto">
                 <div class="input-group col-auto">
-                  <div class="input-group-text">Quantity
-                    </div>
-                  <input type="number" min="1" max="10"
+                  <div class="input-group-text">Quantity</div>
+                  <input type="number" 
+                    min="1" 
+                    max="{% if template_data.movie.amount_left > 0 %}{{ template_data.movie.amount_left }}{% else %}0{% endif %}"
                     class="form-control quantity-input"
-                    name="quantity" value="1">
+                    name="quantity" 
+                    value="1"
+                    {% if template_data.movie.amount_left == 0 %}disabled{% endif %}>
                 </div>
               </div>
               <div class="col-auto">
-                <button class="btn bg-dark text-white"
-                  type="submit">Add to cart</button>
+                <button class="btn {% if template_data.movie.amount_left > 0 %}bg-dark{% else %}btn-secondary{% endif %} text-white"
+                  type="submit"
+                  {% if template_data.movie.amount_left == 0 %}disabled{% endif %}>
+                  {% if template_data.movie.amount_left > 0 %}Add to cart{% else %}Out of Stock{% endif %}
+                </button>
               </div>
             </div>
           </form>

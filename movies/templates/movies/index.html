@@ -30,15 +30,34 @@
     </div>
     <div class="row">
       {% for movie in template_data.movies %}
-      <div class="col-md-4 col-lg-3 mb-2">
-        <div class="p-2 card align-items-center pt-4">
-          <img src="{{ movie.image.url }}" class="card-img-top rounded img-card-200">
-          <div class="card-body text-center">
-            <a href="{% url 'movies.show' id=movie.id %}" class="btn bg-dark text-white">
-              {{ movie.name }}
+      <div class="col-md-4 col-lg-3 mb-4">
+        <div class="card h-100">
+          <img src="{{ movie.image.url }}" class="card-img-top" alt="{{ movie.name }}" style="height: 200px; object-fit: cover;">
+          <div class="card-body">
+            <h5 class="card-title">{{ movie.name }}</h5>
+            <p class="card-text"><b>Price: </b>${{ movie.price }}</p>
+            <div class="mb-2">
+              {% if movie.amount_left > 5 %}
+                <span class="badge bg-success">In Stock</span>
+              {% elif movie.amount_left > 0 %}
+                <span class="badge bg-warning">Only {{ movie.amount_left }} left</span>
+              {% else %}
+                <span class="badge bg-danger">Out of Stock</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="card-footer bg-transparent border-top-0 pb-3">
+            <a href="{% url 'movies.show' id=movie.id %}"
+              class="btn btn-block w-100 {% if movie.amount_left > 0 %}btn-dark{% else %}btn-secondary{% endif %}"
+              {% if movie.amount_left == 0 %}disabled{% endif %}>
+              {% if movie.amount_left > 0 %}View Details{% else %}Out of Stock{% endif %}
             </a>
           </div>
         </div>
+      </div>
+      {% empty %}
+      <div class="col-12 text-center">
+        <p class="text-muted">No movies found.</p>
       </div>
       {% endfor %}
     </div>

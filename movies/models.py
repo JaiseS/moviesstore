@@ -1,12 +1,21 @@
 from django.db import models
 from django.contrib.auth.models import User
 # Create your models here.
+class AvailableMoviesManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(amount_left__gt=0)
+
 class Movie(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255)
     price = models.IntegerField()
     description = models.TextField()
     image = models.ImageField(upload_to='movie_images/')
+    amount_left = models.PositiveIntegerField(default=1, help_text='Number of items left in stock. Set to 0 to hide from listings.')
+    
+    # Custom managers
+    objects = models.Manager()  # Default manager
+    available = AvailableMoviesManager()  # Custom manager for available movies
     def __str__(self):
         return str(self.id) + ' - ' + self.name
     
