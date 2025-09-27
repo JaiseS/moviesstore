@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Movie Petitions</h1>
+        {% if user.is_authenticated %}
+            <a href="{% url 'petitions:create' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Create New Petition
+            </a>
+        {% endif %}
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="list-group">
+        {% for petition in petitions %}
+        <div class="list-group-item mb-3">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="me-3 flex-grow-1">
+                    <h5 class="mb-1">{{ petition.title }}</h5>
+                    <p class="mb-1">{{ petition.description }}</p>
+                    <small class="text-muted">
+                        Posted by {{ petition.user.username }} on {{ petition.created_at|date:"M d, Y" }}
+                        • <span class="vote-count-text">{{ petition.total_votes }} vote{{ petition.total_votes|pluralize }}</span>
+                    </small>
+                </div>
+                <div class="text-center ms-3" style="min-width: 80px;">
+                    {% if user.is_authenticated %}
+                        <form class="vote-form" data-petition-id="{{ petition.id }}" method="post" action="{% url 'petitions:vote' petition.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm {% if user in petition.votes.all %}btn-success{% else %}btn-outline-secondary{% endif %}"
+                                    {% if petition.user == user %}disabled title="You can't vote on your own petition"{% endif %}>
+                                <i class="fas fa-thumbs-up"></i>
+                                <span class="vote-count">{{ petition.total_votes }}</span>
+                            </button>
+                        </form>
+                    {% else %}
+                        <button class="btn btn-sm btn-outline-secondary" disabled>
+                            <i class="fas fa-thumbs-up"></i>
+                            <span>{{ petition.total_votes }}</span>
+                        </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="alert alert-info">
+            No petitions yet. Be the first to create one!
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const voteForms = document.querySelectorAll('.vote-form');
+    
+    voteForms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            e.stopPropagation();  // Prevent any parent form from submitting
+            
+            const button = form.querySelector('button');
+            if (button.disabled) return;
+            
+            const petitionId = form.dataset.petitionId;
+            const voteUrl = form.getAttribute('action');
+            const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
+            
+            console.log('Voting on petition:', petitionId);
+            console.log('Sending request to:', voteUrl);
+            
+            // Disable the button during the request
+            button.disabled = true;
+            
+            // Create a FormData object to send with the request
+            const formData = new FormData();
+            formData.append('csrfmiddlewaretoken', csrfToken);
+            
+            fetch(voteUrl, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrfToken
+                },
+                body: formData,
+                credentials: 'same-origin'
+            })
+            .then(async response => {
+                console.log('Response status:', response.status);
+                const responseText = await response.text();
+                console.log('Response text:', responseText);
+                
+                if (!response.ok) {
+                    throw new Error(`Server responded with status ${response.status}: ${responseText}`);
+                }
+                
+                try {
+                    return JSON.parse(responseText);
+                } catch (e) {
+                    console.error('Failed to parse JSON:', e);
+                    throw new Error('Invalid JSON response from server');
+                }
+            })
+            .then(data => {
+                
+                if (data.success) {
+                    // Toggle button appearance
+                    const voteButtons = document.querySelectorAll(`.vote-form[data-petition-id="${petitionId}"] button`);
+                    voteButtons.forEach(btn => {
+                        if (data.voted) {
+                            btn.classList.remove('btn-outline-secondary');
+                            btn.classList.add('btn-success');
+                        } else {
+                            btn.classList.remove('btn-success');
+                            btn.classList.add('btn-outline-secondary');
+                        }
+                        // Update the vote count in the button
+                        const countEl = btn.querySelector('.vote-count');
+                        if (countEl) {
+                            countEl.textContent = data.total_votes;
+                        }
+                    });
+                    
+                    // Update the count in the text
+                    document.querySelectorAll(`[data-petition-id="${petitionId}"]`).forEach(formEl => {
+                        const voteText = formEl.closest('.list-group-item').querySelector('.vote-count-text');
+                        if (voteText) {
+                            voteText.textContent = data.total_votes === 1 ? '1 vote' : `${data.total_votes} votes`;
+                        }
+                    });
+                } else {
+                    throw new Error(data.error || 'An error occurred while processing your vote.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert(error.message || 'An error occurred while processing your vote.');
+            })
+            .finally(() => {
+                button.disabled = false;
+            });
+        });
+    });
+});
+</script>
+{% endblock %}
